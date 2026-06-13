@@ -57,3 +57,19 @@ def get_all_items():
             "SELECT * FROM items ORDER BY added_at DESC"
         ).fetchall()
         return [dict(r) for r in rows]
+
+
+def delete_item(id_):
+    with closing(_conn()) as conn:
+        conn.execute("DELETE FROM items WHERE id = ?", (id_,))
+        conn.commit()
+
+
+def get_pending_items_in_range(date_from, date_to):
+    with closing(_conn()) as conn:
+        conn.row_factory = sqlite3.Row
+        rows = conn.execute(
+            "SELECT * FROM items WHERE used = 0 AND date(added_at) BETWEEN ? AND ? ORDER BY added_at DESC",
+            (date_from, date_to)
+        ).fetchall()
+        return [dict(r) for r in rows]

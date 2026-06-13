@@ -106,6 +106,19 @@
 
     .empty { color: #999; font-style: italic; padding: 16px 0; text-align: center; }
 
+    .summary-short { cursor: pointer; color: #333; }
+    .summary-short:hover { text-decoration: underline; }
+    .summary-full { display: none; white-space: pre-wrap; }
+    .summary-full.open { display: block; }
+    .summary-toggle { font-size: 0.78rem; color: #4a90d9; cursor: pointer; margin-top: 4px; display: inline-block; }
+
+    .date-range { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 14px; font-size: 0.9rem; }
+    .date-range label { color: #555; }
+    .date-range input[type="date"] { padding: 6px 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 0.9rem; }
+
+    .btn-delete { background: none; border: none; color: #ccc; font-size: 1rem; cursor: pointer; padding: 2px 6px; border-radius: 4px; transition: color .15s; }
+    .btn-delete:hover { color: #e74c3c; }
+
     .drop-zone {
       border: 2px dashed #ccc;
       border-radius: 8px;
@@ -162,19 +175,24 @@
   <!-- Generate / Clear -->
   <div class="card">
     <h2>Presentation</h2>
-    <div class="actions">
-      <form method="POST" action="/generate" onsubmit="showSpinner(this)">
-        <button type="submit" class="btn-success">
-          ⬇ Generate Presentation
-        </button>
+    <form method="POST" action="/generate" onsubmit="showSpinner(this)">
+      <div class="date-range">
+        <label>From</label>
+        <input type="date" name="date_from" />
+        <label>To</label>
+        <input type="date" name="date_to" />
+        <small style="color:#999">Leave empty to include all pending items</small>
+      </div>
+      <div class="actions">
+        <button type="submit" class="btn-success">⬇ Generate Presentation</button>
         <span class="spinner">Building PPTX…</span>
-      </form>
-      <form method="POST" action="/clear">
-        <button type="submit" class="btn-danger" onclick="return confirm('Mark all pending items as used?')">
-          Clear pending
-        </button>
-      </form>
-    </div>
+      </div>
+    </form>
+    <form method="POST" action="/clear" style="margin-top:12px">
+      <button type="submit" class="btn-danger" onclick="return confirm('Mark all pending items as used?')">
+        Clear pending
+      </button>
+    </form>
   </div>
 
   <!-- Items list -->
@@ -190,15 +208,22 @@
             <th>Summary</th>
             <th>Added</th>
             <th>Status</th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
           {% for item in items %}
-          <tr>
+          <tr id="row-{{ item.id }}">
             <td>{{ item.id }}</td>
             <td><span class="badge badge-{{ item.type }}">{{ item.type }}</span></td>
             <td class="source-cell">{{ item.source or '—' }}</td>
-            <td class="summary-cell">{{ item.summary }}</td>
+            <td class="summary-cell">
+              <span class="summary-short" onclick="toggleSummary({{ item.id }})">{{ item.summary[:100] }}{% if item.summary|length > 100 %}…{% endif %}</span>
+              {% if item.summary|length > 100 %}
+                <div class="summary-full" id="full-{{ item.id }}">{{ item.summary }}</div>
+                <span class="summary-toggle" onclick="toggleSummary({{ item.id }})" id="toggle-{{ item.id }}">Show more</span>
+              {% endif %}
+            </td>
             <td style="white-space:nowrap; font-size:.82rem; color:#888;">{{ item.added_at[:16] }}</td>
             <td>
               {% if item.used %}
@@ -206,6 +231,9 @@
               {% else %}
                 <span class="badge badge-pending">pending</span>
               {% endif %}
+            </td>
+            <td>
+              <button class="btn-delete" title="Delete" onclick="deleteItem({{ item.id }})">✕</button>
             </td>
           </tr>
           {% endfor %}
@@ -254,6 +282,19 @@
   fileInput.addEventListener("change", () => {
     if (fileInput.files[0]) uploadImage(fileInput.files[0]);
   });
+
+  function toggleSummary(id) {
+    const full = document.getElementById("full-" + id);
+    const toggle = document.getElementById("toggle-" + id);
+    const isOpen = full.classList.toggle("open");
+    if (toggle) toggle.textContent = isOpen ? "Show less" : "Show more";
+  }
+
+  async function deleteItem(id) {
+    if (!confirm("Delete this item?")) return;
+    await fetch("/delete/" + id, { method: "POST" });
+    document.getElementById("row-" + id).remove();
+  }
 
   document.addEventListener("paste", e => {
     const items = Array.from(e.clipboardData.items);

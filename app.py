@@ -65,9 +65,14 @@ def add_image():
 
 @app.route("/generate", methods=["POST"])
 def generate():
-    items = db.get_pending_items()
+    date_from = request.form.get("date_from", "").strip()
+    date_to = request.form.get("date_to", "").strip()
+    if date_from and date_to:
+        items = db.get_pending_items_in_range(date_from, date_to)
+    else:
+        items = db.get_pending_items()
     if not items:
-        flash("No pending items to include in the presentation.", "error")
+        flash("No pending items found for the selected period.", "error")
         return redirect(url_for("index"))
     try:
         slides_data = ai.generate_presentation_structure(items)
@@ -82,6 +87,12 @@ def generate():
     except Exception as e:
         flash(f"Error generating presentation: {e}", "error")
         return redirect(url_for("index"))
+
+
+@app.route("/delete/<int:item_id>", methods=["POST"])
+def delete_item(item_id):
+    db.delete_item(item_id)
+    return ("", 204)
 
 
 @app.route("/clear", methods=["POST"])
