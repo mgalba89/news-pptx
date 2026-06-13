@@ -1,0 +1,14 @@
+[Unit]
+Description=News to PowerPoint Flask App
+After=network.target
+
+[Service]
+User=michal
+WorkingDirectory=/home/michal/news_pptx
+EnvironmentFile=/home/michal/news_pptx/.env
+ExecStart=/home/michal/news_pptx/venv/bin/python -m flask run --host=0.0.0.0 --port=5001
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
